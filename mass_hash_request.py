@@ -1,11 +1,46 @@
-#!/usr/bin/env python3 
-import os
+#! /usr/bin/env python
 import argparse
-import json
+import logging
+import sys
 import requests
-from collections import namedtuple
+import os
+import json
 import re
 import tarfile
+
+PROGRAM_NAME = "MASS Hash Request"
+PROGRAM_VERSION = "0.1"
+PROGRAM_DESCRIPTION = "This tool queries a MASS server for multiple hash sums and represents the results as a directory tree."
+
+
+def _setup_argparser():
+    parser = argparse.ArgumentParser(description="{} - {}".format(PROGRAM_NAME, PROGRAM_DESCRIPTION))
+
+    parser.add_argument('hashfile', help='file containing hash sums')
+    parser.add_argument('--hash-type')
+    parser.add_argument('-V', '--version', action='version', version="{} {}".format(PROGRAM_NAME, PROGRAM_VERSION))
+    parser.add_argument("-l", "--log_file",
+                        help="path to log file",
+                        default="./log/program.log")
+    parser.add_argument("-L", "--log_level",
+                        help="define the log level [DEBUG,INFO,WARNING,ERROR]",
+                        default="WARNING")
+    return parser.parse_args()
+
+
+def _setup_logging(args):
+    log_level = getattr(logging, args.log_level.upper(), None)
+    log_format = logging.Formatter(fmt="[%(asctime)s][%(module)s][%(levelname)s]: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    logger = logging.getLogger('')
+    logger.setLevel(logging.DEBUG)
+    file_log = logging.FileHandler(args.log_file)
+    file_log.setLevel(log_level)
+    file_log.setFormatter(log_format)
+    console_log = logging.StreamHandler()
+    console_log.setLevel(logging.INFO)
+    console_log.setFormatter(log_format)
+    logger.addHandler(file_log)
+    logger.addHandler(console_log)
 
 def load_configuration(config_path):
     if not os.path.exists(config_path):
@@ -28,29 +63,13 @@ def save_configuration(config, config_path):
     with open(config_path, "w") as fp:
         json.dump(config, fp, indent=4, sort_keys=True)
 
-def _parse_args():
-    '''
-    Parses the command line arguments.
-
-    :return: Namespace with arguments.
-    :rtype: Namespace
-    '''
-    description = '''mass_multi_hash_request
-    Uses your favourite MASS server to request for samples with respective hash
-    sums.'''
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('hashfile', help='file containing hash sums')
-    parser.add_argument('--hash-type')
-    options = parser.parse_args()
-
-    return options
-
 def update_config_from_options(config, options):
     if options.hash_type:
         if options.hash_type in config['hashes']:
             config['hash'] = options.hash_type
         else:
             raise ValueError('{} is not a known hash.'.format(options.hash_type))
+
 
 def read_hash_sums(filename):
     hashes = []
@@ -81,11 +100,11 @@ def generate_no_file_found_file(path):
 
 def generate_report_dir(path, result):
     reports_path = path + '/Reports'
-    if result['reports']:
+    result = requests.get(result['url'] + 'reports/')
+    reports = result.json()['results']
+    if reports:
         touch_path(reports_path)
-        for report in result['reports']:
-            report_response = requests.get(report)
-            report = json.loads(report_response.text)
+        for report in reports:
             analysis_system = re.search('/analysis_system/([^/]*)/', report['analysis_system']).group(1)
             report_path = '{}/{}.json'.format(reports_path, analysis_system)
             with open(report_path,'w') as report_file:
@@ -99,8 +118,8 @@ def download_file(url, dest_path):
 def generate_sample_dir(path, result):
     sample_path = path + '/Sample'
     touch_path(sample_path)
-    file_url = '{}{}'.format(result['url'],'download_file')
-    file_path = '{}/{}'.format(sample_path, result['file'])
+    file_url = result['file']
+    file_path = '{}/{}'.format(sample_path, result['file_names'][0])
     download_file(file_url, file_path)
 
 def generate_file_dirs(path,result):
@@ -122,13 +141,19 @@ def make_archive(path):
     with tarfile.open('result_archive.tar.gz', 'w:gz') as tar:
         tar.add(path)
 
+
+
 if __name__ == '__main__':
+    args = _setup_argparser()
+    _setup_logging(args)
+
     config_path = 'config.json'
     config = load_configuration(config_path)
-    options = _parse_args()
-    update_config_from_options(config, options)
-    hashes = read_hash_sums(options.hashfile)
+    update_config_from_options(config, args)
+    hashes = read_hash_sums(args.hashfile)
     results = query_mass_for_hashes(config['base_url'], config['hash'], hashes)
+    print(results)
     generate_file_structure(config['directory'], results)
     make_archive(config['directory'])
 
+    sys.exit()

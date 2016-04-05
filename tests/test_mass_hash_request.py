@@ -22,7 +22,7 @@ class MassHashRequestTestCase(unittest.TestCase):
             response['ffff'] = {
                 "results" : [
                     { 
-                        'file' : 'something_harmfull.exe',
+                        'file_names' : ['something_harmfull.exe'],
                     }]
                 }
             response['aaaa'] = { 'results' : [] }
@@ -31,30 +31,31 @@ class MassHashRequestTestCase(unittest.TestCase):
 
         with HTTMock(mass_server_mock):
             results = query_mass_for_hashes( mass_url, hash_type, hashes)
-        self.assertEqual(results['ffff']['file'], 'something_harmfull.exe')
+        self.assertEqual(results['ffff']['file_names'][0], 'something_harmfull.exe')
         self.assertIsNone(results['aaaa'])
 
     def test_generate_file_structure(self):
+
+        reports = {
+                'results': [
+                    {
+                    'analysis_system' : 'http://mass_server.de/analysis_system/some_system/',
+                    'result' : 'highly dangerous',
+                    },
+                    ]
+                }
         query_results = {
                 'ffff' : {
                     'url' : 'http://mass_server.de/api/sample/ffff/',
-                    'file' : 'something_harmfull.exe',
-                    'reports':[ 
-                        'http://mass_server.de/api/report/some_report',
-                        ]
+                    'file' : 'http://mass_server.de/api/sample/ffff/download_file',
+                    'file_names' : ['something_harmfull.exe'],
                     },
                 'aaaa' : None
                 }
 
-        report = {
-                'analysis_system' : 'http://mass_server.de/analysis_system/some_system/',
-                'result' : 'highly dangerous',
-                }
-
-
-        @urlmatch(netloc='mass_server.de', path='/api/report/some_report')
+        @urlmatch(netloc='mass_server.de', path='/api/sample/ffff/reports/')
         def report_request(url, request):
-            return json.dumps(report).encode('utf-8')
+            return json.dumps(reports).encode('utf-8')
 
         @urlmatch(netloc='mass_server.de', path='/api/sample/ffff/download_file')
         def download_request(url, request):
