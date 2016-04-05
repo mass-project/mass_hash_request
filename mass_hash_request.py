@@ -152,7 +152,6 @@ if __name__ == '__main__':
     update_config_from_options(config, args)
     hashes = read_hash_sums(args.hashfile)
     results = query_mass_for_hashes(config['base_url'], config['hash'], hashes)
-    print(results)
     generate_file_structure(config['directory'], results)
     make_archive(config['directory'])
 
