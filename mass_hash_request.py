@@ -70,7 +70,6 @@ def update_config_from_options(config, options):
         else:
             raise ValueError('{} is not a known hash.'.format(options.hash_type))
 
-
 def read_hash_sums(filename):
     hashes = []
     with open(filename) as hash_file:
@@ -142,7 +141,6 @@ def make_archive(path):
         tar.add(path)
 
 
-
 if __name__ == '__main__':
     args = _setup_argparser()
     _setup_logging(args)
@@ -156,3 +154,4 @@ if __name__ == '__main__':
     make_archive(config['directory'])
 
     sys.exit()
+
