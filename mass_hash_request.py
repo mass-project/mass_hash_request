@@ -25,6 +25,8 @@ def _setup_argparser():
     parser.add_argument("-L", "--log_level",
                         help="define the log level [DEBUG,INFO,WARNING,ERROR]",
                         default="WARNING")
+    parser.add_argument('-p', '--print-missing', action='store_true', default=False,
+                        help="print hash values which were not found on MASS')
     return parser.parse_args()
 
 
@@ -125,7 +127,7 @@ def generate_file_dirs(path,result):
     generate_report_dir(path,result)
     generate_sample_dir(path,result)
 
-def generate_file_structure(base_dir, query_results):
+def generate_file_structure(base_dir, query_results, options):
     if not os.path.exists(base_dir):
         os.mkdir(base_dir)
     for h, result in query_results.items():
@@ -135,6 +137,8 @@ def generate_file_structure(base_dir, query_results):
             generate_file_dirs(path, result)
         else:
             generate_no_file_found_file(path)
+            if options.print_missing:
+                print(h)
 
 def make_archive(path):
     with tarfile.open('result_archive.tar.gz', 'w:gz') as tar:
@@ -150,7 +154,7 @@ if __name__ == '__main__':
     update_config_from_options(config, args)
     hashes = read_hash_sums(args.hashfile)
     results = query_mass_for_hashes(config['base_url'], config['hash'], hashes)
-    generate_file_structure(config['directory'], results)
+    generate_file_structure(config['directory'], results, args)
     make_archive(config['directory'])
 
     sys.exit()
