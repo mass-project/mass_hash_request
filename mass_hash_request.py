@@ -57,7 +57,8 @@ def load_configuration(config_path):
 
 
 def create_config():
-    config['base_url'] = 'https://tools.net.cs.uni-bonn.de/mass-dev/api/'
+    config = dict()
+    config['base_url'] = 'https://tools.net.cs.uni-bonn.de/mass-dev/api/sample/'
     config['hash'] = 'md5'
     config['hashes'] = ['md5', 'sha1', 'sha256', 'sha512']
     config['directory'] = 'mhr_result'
