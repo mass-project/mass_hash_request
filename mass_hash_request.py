@@ -25,6 +25,8 @@ def _setup_argparser():
     parser.add_argument("-L", "--log_level",
                         help="define the log level [DEBUG,INFO,WARNING,ERROR]",
                         default="WARNING")
+    parser.add_argument('-p', '--print-missing', action='store_true', default=False,
+                        help='print hash values which were not found on MASS')
     return parser.parse_args()
 
 
@@ -42,6 +44,7 @@ def _setup_logging(args):
     logger.addHandler(file_log)
     logger.addHandler(console_log)
 
+
 def load_configuration(config_path):
     if not os.path.exists(config_path):
         print("configuration file not found.\ncreating config: config.json ")
@@ -52,16 +55,20 @@ def load_configuration(config_path):
             config = json.load(fp)
     return config
 
+
 def create_config():
-    config['base_url'] = 'http://localhost:8000/api/sample/'
+    config = dict()
+    config['base_url'] = 'https://tools.net.cs.uni-bonn.de/mass-dev/api/sample/'
     config['hash'] = 'md5'
-    config['hashes'] = ['md5', 'sha1']
-    config['directory'] = 'mmhr_result'
+    config['hashes'] = ['md5', 'sha1', 'sha256', 'sha512']
+    config['directory'] = 'mhr_result'
     return config
+
 
 def save_configuration(config, config_path):
     with open(config_path, "w") as fp:
         json.dump(config, fp, indent=4, sort_keys=True)
+
 
 def update_config_from_options(config, options):
     if options.hash_type:
@@ -70,6 +77,7 @@ def update_config_from_options(config, options):
         else:
             raise ValueError('{} is not a known hash.'.format(options.hash_type))
 
+
 def read_hash_sums(filename):
     hashes = []
     with open(filename) as hash_file:
@@ -77,11 +85,12 @@ def read_hash_sums(filename):
             hashes.append(h.strip())
     return hashes
 
+
 def query_mass_for_hashes(mass_url, hash_type, hashes):
     request_url = '{}?{}={}'
     results = {}
     for h in hashes:
-        url = request_url.format(mass_url , hash_type + 'sum', h)
+        url = request_url.format(mass_url, hash_type + 'sum', h)
         query_response = requests.get(url)
         response = json.loads(query_response.text)
         if response['results']:
@@ -90,12 +99,15 @@ def query_mass_for_hashes(mass_url, hash_type, hashes):
             results[h] = None
     return results
 
+
 def touch_path(path):
     if not os.path.exists(path):
         os.mkdir(path)
 
+
 def generate_no_file_found_file(path):
     open(path + '/SampleNotFound', 'w').close()
+
 
 def generate_report_dir(path, result):
     reports_path = path + '/Reports'
@@ -106,13 +118,15 @@ def generate_report_dir(path, result):
         for report in reports:
             analysis_system = re.search('/analysis_system/([^/]*)/', report['analysis_system']).group(1)
             report_path = '{}/{}.json'.format(reports_path, analysis_system)
-            with open(report_path,'w') as report_file:
+            with open(report_path, 'w') as report_file:
                 report_file.write(json.dumps(report, indent=4))
+
 
 def download_file(url, dest_path):
     response = requests.get(url)
     with open(dest_path, 'wb') as f:
         f.write(response.content)
+
 
 def generate_sample_dir(path, result):
     sample_path = path + '/Sample'
@@ -121,11 +135,13 @@ def generate_sample_dir(path, result):
     file_path = '{}/{}'.format(sample_path, result['file_names'][0])
     download_file(file_url, file_path)
 
-def generate_file_dirs(path,result):
-    generate_report_dir(path,result)
-    generate_sample_dir(path,result)
 
-def generate_file_structure(base_dir, query_results):
+def generate_file_dirs(path, result):
+    generate_report_dir(path, result)
+    generate_sample_dir(path, result)
+
+
+def generate_file_structure(base_dir, query_results, options):
     if not os.path.exists(base_dir):
         os.mkdir(base_dir)
     for h, result in query_results.items():
@@ -135,6 +151,9 @@ def generate_file_structure(base_dir, query_results):
             generate_file_dirs(path, result)
         else:
             generate_no_file_found_file(path)
+            if options.print_missing:
+                print(h)
+
 
 def make_archive(path):
     with tarfile.open('result_archive.tar.gz', 'w:gz') as tar:
@@ -150,8 +169,7 @@ if __name__ == '__main__':
     update_config_from_options(config, args)
     hashes = read_hash_sums(args.hashfile)
     results = query_mass_for_hashes(config['base_url'], config['hash'], hashes)
-    generate_file_structure(config['directory'], results)
+    generate_file_structure(config['directory'], results, args)
     make_archive(config['directory'])
 
     sys.exit()
-
