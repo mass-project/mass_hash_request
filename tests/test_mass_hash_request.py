@@ -2,7 +2,6 @@ import unittest
 from httmock import urlmatch, HTTMock
 from mass_hash_request import query_mass_for_hashes
 from mass_hash_request import generate_file_structure
-from mass_hash_request import _setup_argparser
 import json
 import re
 import tempfile
@@ -10,6 +9,9 @@ import os
 
 
 class MassHashRequestTestCase(unittest.TestCase):
+    class Options:
+        print_missing = True
+
     def test_query_mass_for_hashes(self):
         mass_url = 'http://mass_server.de'
         hash_type = 'md5'
@@ -65,7 +67,7 @@ class MassHashRequestTestCase(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as base_dir:
             with HTTMock(report_request, download_request):
-                options = _setup_argparser()
+                options = self.Options()
                 generate_file_structure(base_dir, query_results, options)
         
             self.assertTrue(os.path.exists(base_dir + '/ffff/Sample/something_harmfull.exe'))
