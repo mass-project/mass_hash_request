@@ -2,11 +2,13 @@
 import argparse
 import logging
 import sys
-import requests
 import os
 import json
 import re
 import tarfile
+
+from mass_api_client import ConnectionManager
+from mass_api_client.resources import FileSample
 
 PROGRAM_NAME = "MASS Hash Request"
 PROGRAM_VERSION = "0.1"
@@ -59,6 +61,7 @@ def load_configuration(config_path):
 def create_config():
     config = dict()
     config['base_url'] = 'https://tools.net.cs.uni-bonn.de/mass-dev/api/sample/'
+    config['api_key'] = ''
     config['hash'] = 'md5'
     config['hashes'] = ['md5', 'sha1', 'sha256', 'sha512']
     config['directory'] = 'mhr_result'
@@ -87,22 +90,23 @@ def read_hash_sums(filename):
 
 
 def query_mass_for_hashes(mass_url, hash_type, hashes):
-    request_url = '{}?{}={}'
     results = {}
+
     for h in hashes:
-        url = request_url.format(mass_url, hash_type + 'sum', h)
-        query_response = requests.get(url)
-        response = json.loads(query_response.text)
-        if response['results']:
-            results[h] = response['results'][0]
+        query_parameters = {hash_type + 'sum': h}
+        returned_samples = FileSample.query(**query_parameters)
+
+        if len(returned_samples) == 1:
+            results[h] = returned_samples[0]
         else:
             results[h] = None
+
     return results
 
 
 def touch_path(path):
     if not os.path.exists(path):
-        os.mkdir(path)
+        os.makedirs(path)
 
 
 def generate_no_file_found_file(path):
@@ -111,29 +115,29 @@ def generate_no_file_found_file(path):
 
 def generate_report_dir(path, result):
     reports_path = path + '/Reports'
-    result = requests.get(result['url'] + 'reports/')
-    reports = result.json()['results']
-    if reports:
-        touch_path(reports_path)
-        for report in reports:
-            analysis_system = re.search('/analysis_system/([^/]*)/', report['analysis_system']).group(1)
-            report_path = '{}/{}.json'.format(reports_path, analysis_system)
-            with open(report_path, 'w') as report_file:
-                report_file.write(json.dumps(report, indent=4))
+    reports = result.get_reports()
+    for report in reports:
+        analysis_system = re.search('/analysis_system/([^/]*)/', report.analysis_system).group(1)
+        analysis_system_path = '{}/{}'.format(reports_path, analysis_system)
+        touch_path(analysis_system_path)
 
+        for key in report.json_report_objects:
+            report_object_path = '{}/{}.json'.format(analysis_system_path, key)
+            with open(report_object_path, 'w') as report_file:
+                report_file.write(json.dumps(report.get_json_report_object(key), indent=4))
 
-def download_file(url, dest_path):
-    response = requests.get(url)
-    with open(dest_path, 'wb') as f:
-        f.write(response.content)
+        for key in report.raw_report_objects:
+            report_object_path = '{}/{}'.format(analysis_system_path, key)
+            with open(report_object_path, 'wb') as report_file:
+                report.download_raw_report_object_to_file(key, report_file)
 
 
 def generate_sample_dir(path, result):
     sample_path = path + '/Sample'
     touch_path(sample_path)
-    file_url = result['file']
-    file_path = '{}/{}'.format(sample_path, result['file_names'][0])
-    download_file(file_url, file_path)
+    file_path = '{}/{}'.format(sample_path, result.file_names[0])
+    with open(file_path, 'wb') as f:
+        result.download_to_file(f)
 
 
 def generate_file_dirs(path, result):
@@ -167,6 +171,7 @@ if __name__ == '__main__':
     config_path = 'config.json'
     config = load_configuration(config_path)
     update_config_from_options(config, args)
+    ConnectionManager().register_connection('default', config['api_key'], config['base_url'])
     hashes = read_hash_sums(args.hashfile)
     results = query_mass_for_hashes(config['base_url'], config['hash'], hashes)
     generate_file_structure(config['directory'], results, args)
