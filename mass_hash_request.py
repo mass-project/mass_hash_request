@@ -19,6 +19,7 @@ def _setup_argparser():
     parser = argparse.ArgumentParser(description="{} - {}".format(PROGRAM_NAME, PROGRAM_DESCRIPTION))
 
     parser.add_argument('hashfile', help='file containing hash sums')
+    parser.add_argument('-A', '--api_key', help='API Key for MASS')
     parser.add_argument('--hash-type')
     parser.add_argument('-V', '--version', action='version', version="{} {}".format(PROGRAM_NAME, PROGRAM_VERSION))
     parser.add_argument("-l", "--log_file",
@@ -60,7 +61,7 @@ def load_configuration(config_path):
 
 def create_config():
     config = dict()
-    config['base_url'] = 'https://tools.net.cs.uni-bonn.de/mass-dev/api/sample/'
+    config['base_url'] = 'http://localhost:5000/api/'
     config['api_key'] = ''
     config['hash'] = 'md5'
     config['hashes'] = ['md5', 'sha1', 'sha256', 'sha512']
@@ -79,6 +80,8 @@ def update_config_from_options(config, options):
             config['hash'] = options.hash_type
         else:
             raise ValueError('{} is not a known hash.'.format(options.hash_type))
+    if options.api_key:
+        config['api_key'] = options.api_key
 
 
 def read_hash_sums(filename):
@@ -89,7 +92,7 @@ def read_hash_sums(filename):
     return hashes
 
 
-def query_mass_for_hashes(mass_url, hash_type, hashes):
+def query_mass_for_hashes(hash_type, hashes):
     results = {}
 
     for h in hashes:
@@ -173,7 +176,7 @@ if __name__ == '__main__':
     update_config_from_options(config, args)
     ConnectionManager().register_connection('default', config['api_key'], config['base_url'])
     hashes = read_hash_sums(args.hashfile)
-    results = query_mass_for_hashes(config['base_url'], config['hash'], hashes)
+    results = query_mass_for_hashes(config['hash'], hashes)
     generate_file_structure(config['directory'], results, args)
     make_archive(config['directory'])
 

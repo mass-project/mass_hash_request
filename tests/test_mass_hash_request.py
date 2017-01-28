@@ -25,7 +25,6 @@ class MassHashRequestTestCase(unittest.TestCase):
             self.report = Report._create_instance_from_data(data)
 
     def test_query_mass_for_hashes(self):
-        mass_url = 'http://localhost'
         hash_type = 'md5'
         hashes = [
             'ffff',
@@ -41,7 +40,7 @@ class MassHashRequestTestCase(unittest.TestCase):
             return json.dumps(response[hash_query]).encode('utf-8')
 
         with HTTMock(mass_server_mock):
-            results = query_mass_for_hashes(mass_url, hash_type, hashes)
+            results = query_mass_for_hashes(hash_type, hashes)
 
         self.assertEqual(results['ffff'].file_names[0], 'file.pdf')
         self.assertIsNone(results['aaaa'])
