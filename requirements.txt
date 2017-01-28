@@ -3,4 +3,6 @@ codecov==2.0.5
 nose==1.3.7
 nose-exclude==0.5.0
 requests==2.13.0
+marshmallow==2.12.1
 httmock==1.2.6
+-e git+https://github.com/mass-project/mass_api_client.git@d51d8c0b0eacbcbe58e2158c1549c8e6fe8fcf65#egg=mass_api_client-origin_setup-script
