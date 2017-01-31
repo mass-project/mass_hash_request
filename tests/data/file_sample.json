@@ -1,0 +1,28 @@
+{
+  "_cls": "Sample.FileSample",
+  "delivery_date": "2016-10-21T14:20:25+00:00",
+  "dispatched_to": [],
+  "file": "http://localhost/api/sample/ffff/download/",
+  "file_names": [
+    "file.pdf"
+  ],
+  "file_size": 924449,
+  "first_seen": "2016-10-21T14:20:25+00:00",
+  "id": "ffff",
+  "magic_string": "PDF document, version 1.5",
+  "md5sum": "ee0fe7202aa7c30293cc7897e8c67837",
+  "mime_type": "application/pdf",
+  "sha1sum": "a4f465a2f975308e0d618f40ae33c858a2949d5d",
+  "sha256sum": "63dc406a091c33118e6e5b82a3238fe719583ba6c785d1e3da2cd98f89a8feaf",
+  "sha512sum": "f0ce8675d9abf7b6158c07b595e979d8fdb676ac172eb69d4bac7c592592c9acd34abbae0e807e6f05a8e1ad6442acec1f75befb039f54952b5635bb03819173",
+  "shannon_entropy": 7.932596532206094,
+  "ssdeep_hash": "24576:Obo2gU03zHH0lo5Ari/cdEm9TaywLPfwH97QpTOj2:4o203j0lo5+8cdX9TaywLPoHBQpm2",
+  "tags": [
+    "extension:pdf",
+    "mime:application/pdf",
+    "filetype:pdf",
+    "sample-type:filesample"
+  ],
+  "tlp_level": 2,
+  "url": "http://localhost/api/sample/ffff/"
+}
