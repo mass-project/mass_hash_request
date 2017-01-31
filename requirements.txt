@@ -5,4 +5,4 @@ nose-exclude==0.5.0
 requests==2.13.0
 marshmallow==2.12.2
 httmock==1.2.6
--e git+https://github.com/mass-project/mass_api_client.git@setup-script#egg=mass_api_client
+-e git+https://github.com/mass-project/mass_api_client.git@master#egg=mass_api_client
