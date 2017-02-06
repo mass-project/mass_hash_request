@@ -7,6 +7,8 @@ import json
 import re
 import tarfile
 
+from datetime import datetime
+
 from mass_api_client import ConnectionManager
 from mass_api_client.resources import FileSample
 
@@ -18,7 +20,18 @@ PROGRAM_DESCRIPTION = "This tool queries a MASS server for multiple hash sums an
 def _setup_argparser():
     parser = argparse.ArgumentParser(description="{} - {}".format(PROGRAM_NAME, PROGRAM_DESCRIPTION))
 
-    parser.add_argument('hashfile', help='file containing hash sums')
+    parser.add_argument('--delivered-after', type=_valid_date)
+    parser.add_argument('--delivered-before', type=_valid_date)
+    parser.add_argument('--first-seen-after', type=_valid_date)
+    parser.add_argument('--first-seen-before', type=_valid_date)
+    parser.add_argument('--shannon-entropy-below', type=float)
+    parser.add_argument('--shannon-entropy-above', type=float)
+    parser.add_argument('--filesize-below', type=int)
+    parser.add_argument('--filesize-above', type=int)
+    parser.add_argument('--hashfile', help='file containing hash sums')
+    parser.add_argument('--mime-type')
+    parser.add_argument('--file-name')
+
     parser.add_argument('-A', '--api_key', help='API Key for MASS')
     parser.add_argument('--hash-type')
     parser.add_argument('-V', '--version', action='version', version="{} {}".format(PROGRAM_NAME, PROGRAM_VERSION))
@@ -31,6 +44,14 @@ def _setup_argparser():
     parser.add_argument('-p', '--print-missing', action='store_true', default=False,
                         help='print hash values which were not found on MASS')
     return parser.parse_args()
+
+
+def _valid_date(string):
+    try:
+        return datetime.strptime(string, "%Y-%m-%d")
+    except ValueError:
+        message = "Invalid date: {}".format(string)
+        raise argparse.ArgumentTypeError(message)
 
 
 def _setup_logging(args):
@@ -46,6 +67,23 @@ def _setup_logging(args):
     console_log.setFormatter(log_format)
     logger.addHandler(file_log)
     logger.addHandler(console_log)
+
+
+def get_query_parameters(args):
+    query_parameters = {
+        'delivery_date__lte': args.delivered_before,
+        'delivery_date__gte': args.delivered_after,
+        'first_seen__lte': args.first_seen_before,
+        'first_seen__gte': args.first_seen_after,
+        'mime_type': args.mime_type,
+        'file_names': args.file_name,
+        'file_size__lte': args.filesize_below,
+        'file_size__gte': args.filesize_above,
+        'shannon_entropy__lte': args.shannon_entropy_below,
+        'shannon_entropy__gte': args.shannon_entropy_above
+    }
+
+    return {k: v for k, v in query_parameters.items() if v}
 
 
 def load_configuration(config_path):
@@ -92,11 +130,14 @@ def read_hash_sums(filename):
     return hashes
 
 
-def query_mass_for_hashes(hash_type, hashes):
+def query_mass_for_hashes(hash_type, hashes, query_parameters=None):
+    if query_parameters is None:
+        query_parameters = {}
+
     results = {}
 
     for h in hashes:
-        query_parameters = {hash_type + 'sum': h}
+        query_parameters[hash_type + 'sum'] = h
         returned_samples = FileSample.query(**query_parameters)
 
         if len(returned_samples) == 1:
@@ -105,6 +146,11 @@ def query_mass_for_hashes(hash_type, hashes):
             results[h] = None
 
     return results
+
+
+def query_mass_for_filesamples(query_parameters):
+    returned_samples = FileSample.query(**query_parameters)
+    return {s.md5sum: s for s in returned_samples}
 
 
 def touch_path(path):
@@ -174,9 +220,18 @@ if __name__ == '__main__':
     config_path = 'config.json'
     config = load_configuration(config_path)
     update_config_from_options(config, args)
+    query_parameters = get_query_parameters(args)
+
     ConnectionManager().register_connection('default', config['api_key'], config['base_url'])
-    hashes = read_hash_sums(args.hashfile)
-    results = query_mass_for_hashes(config['hash'], hashes)
+    if args.hashfile:
+        hashes = read_hash_sums(args.hashfile)
+        results = query_mass_for_hashes(config['hash'], hashes)
+    elif query_parameters:
+        results = query_mass_for_filesamples(query_parameters)
+    else:
+        print('No query parameters given')
+        sys.exit()
+
     generate_file_structure(config['directory'], results, args)
     make_archive(config['directory'])
 
