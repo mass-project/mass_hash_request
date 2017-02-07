@@ -24,6 +24,7 @@ def _setup_argparser():
     parser.add_argument('--delivered-before', type=_valid_date)
     parser.add_argument('--first-seen-after', type=_valid_date)
     parser.add_argument('--first-seen-before', type=_valid_date)
+    parser.add_argument('--tags', help='A list of comma-separated tags')
     parser.add_argument('--entropy-below', type=float)
     parser.add_argument('--entropy-above', type=float)
     parser.add_argument('--filesize-below', type=int)
@@ -75,6 +76,7 @@ def get_query_parameters(args):
         'delivery_date__gte': args.delivered_after,
         'first_seen__lte': args.first_seen_before,
         'first_seen__gte': args.first_seen_after,
+        'tags__all': args.tags,
         'mime_type': args.mime_type,
         'file_names': args.file_name,
         'file_size__lte': args.filesize_below,
