@@ -79,8 +79,8 @@ def get_query_parameters(args):
         'file_names': args.file_name,
         'file_size__lte': args.filesize_below,
         'file_size__gte': args.filesize_above,
-        'shannon_entropy__lte': args.shannon_entropy_below,
-        'shannon_entropy__gte': args.shannon_entropy_above
+        'shannon_entropy__lte': args.entropy_below,
+        'shannon_entropy__gte': args.entropy_above
     }
 
     return {k: v for k, v in query_parameters.items() if v}
