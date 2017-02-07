@@ -141,7 +141,8 @@ def query_mass_for_hashes(hash_type, hashes, query_parameters=None):
         returned_samples = FileSample.query(**query_parameters)
 
         if len(returned_samples) == 1:
-            results[h] = returned_samples[0]
+            s = returned_samples[0]
+            results[s.id] = s
         else:
             results[h] = None
 
@@ -150,7 +151,7 @@ def query_mass_for_hashes(hash_type, hashes, query_parameters=None):
 
 def query_mass_for_filesamples(query_parameters):
     returned_samples = FileSample.query(**query_parameters)
-    return {s.md5sum: s for s in returned_samples}
+    return {s.id: s for s in returned_samples}
 
 
 def touch_path(path):
