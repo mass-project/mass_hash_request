@@ -10,7 +10,7 @@ import tarfile
 from datetime import datetime
 
 from mass_api_client import ConnectionManager
-from mass_api_client.resources import FileSample
+from mass_api_client.resources import Sample, FileSample, IPSample, URISample, DomainSample
 
 PROGRAM_NAME = "MASS Hash Request"
 PROGRAM_VERSION = "0.1"
@@ -32,6 +32,16 @@ def _setup_argparser():
     parser.add_argument('--hashfile', help='file containing hash sums')
     parser.add_argument('--mime-type')
     parser.add_argument('--file-name')
+    parser.add_argument('--domain')
+    parser.add_argument('--domain-contains')
+    parser.add_argument('--domain-startswith')
+    parser.add_argument('--domain-endswith')
+    parser.add_argument('--uri')
+    parser.add_argument('--uri-contains')
+    parser.add_argument('--uri-startswith')
+    parser.add_argument('--uri-endswith')
+    parser.add_argument('--ip')
+    parser.add_argument('--ip-startswith')
 
     parser.add_argument('-A', '--api_key', help='API Key for MASS')
     parser.add_argument('--hash-type')
@@ -57,7 +67,8 @@ def _valid_date(string):
 
 def _setup_logging(args):
     log_level = getattr(logging, args.log_level.upper(), None)
-    log_format = logging.Formatter(fmt="[%(asctime)s][%(module)s][%(levelname)s]: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    log_format = logging.Formatter(fmt="[%(asctime)s][%(module)s][%(levelname)s]: %(message)s",
+                                   datefmt="%Y-%m-%d %H:%M:%S")
     logger = logging.getLogger('')
     logger.setLevel(logging.DEBUG)
     file_log = logging.FileHandler(args.log_file)
@@ -82,7 +93,16 @@ def get_query_parameters(args):
         'file_size__lte': args.filesize_below,
         'file_size__gte': args.filesize_above,
         'shannon_entropy__lte': args.entropy_below,
-        'shannon_entropy__gte': args.entropy_above
+        'shannon_entropy__gte': args.entropy_above,
+        'domain': args.domain,
+        'domain__startswith': args.domain_startswith,
+        'domain__endswith': args.domain_endswith,
+        'uri': args.uri,
+        'uri__contains': args.uri_contains,
+        'uri__startswith': args.uri_startswith,
+        'uri__endswith': args.uri_endswith,
+        'ip_address': args.ip,
+        'ip_address__startswith': args.ip_startswith
     }
 
     return {k: v for k, v in query_parameters.items() if v}
@@ -151,9 +171,16 @@ def query_mass_for_hashes(hash_type, hashes, query_parameters=None):
     return results
 
 
-def query_mass_for_filesamples(query_parameters):
-    returned_samples = FileSample.query(**query_parameters)
-    return {s.id: s for s in returned_samples}
+def query_mass_for_samples(query_parameters):
+    for sample_class in [Sample, DomainSample, FileSample, IPSample, URISample]:
+        try:
+            returned_samples = sample_class.query(**query_parameters)
+            return {s.id: s for s in returned_samples}
+        except ValueError:
+            continue
+
+    print('Incompatible choice of parameters')
+    sys.exit()
 
 
 def touch_path(path):
@@ -192,9 +219,31 @@ def generate_sample_dir(path, result):
         result.download_to_file(f)
 
 
+def generate_sample_file(path, result):
+    sample_path = path + '/Sample.txt'
+    content = ''
+
+    if isinstance(result, DomainSample):
+        sample_path = path + '/Domain.txt'
+        content = result.domain
+    if isinstance(result, IPSample):
+        sample_path = path + '/IPAddress.txt'
+        content = result.ip_address
+    if isinstance(result, URISample):
+        sample_path = path + '/URI.txt'
+        content = result.uri
+
+    with open(sample_path, 'w') as f:
+        f.write(content)
+
+
 def generate_file_dirs(path, result):
     generate_report_dir(path, result)
-    generate_sample_dir(path, result)
+
+    if isinstance(result, FileSample):
+        generate_sample_dir(path, result)
+    else:
+        generate_sample_file(path, result)
 
 
 def generate_file_structure(base_dir, query_results, options):
@@ -230,7 +279,7 @@ if __name__ == '__main__':
         hashes = read_hash_sums(args.hashfile)
         results = query_mass_for_hashes(config['hash'], hashes)
     elif query_parameters:
-        results = query_mass_for_filesamples(query_parameters)
+        results = query_mass_for_samples(query_parameters)
     else:
         print('No query parameters given')
         sys.exit()
