@@ -1,6 +1,6 @@
 import unittest
 from httmock import urlmatch, HTTMock
-from mass_hash_request import query_mass_for_hashes
+from mass_hash_request import query_mass_for_hashes, query_mass_for_samples
 from mass_hash_request import generate_file_structure
 from mass_hash_request import load_configuration
 from mass_api_client.resources import FileSample, Report
@@ -16,6 +16,9 @@ class MassHashRequestTestCase(unittest.TestCase):
 
     def setUp(self):
         ConnectionManager().register_connection('default', '', 'http://localhost/api/')
+
+        with open('tests/data/file_sample_list.json') as fp:
+            self.sample_list_json = json.load(fp)
 
         with open('tests/data/file_sample.json') as fp:
             data = FileSample._deserialize(json.load(fp))
@@ -45,6 +48,21 @@ class MassHashRequestTestCase(unittest.TestCase):
 
         self.assertEqual(results['ffff'].file_names[0], 'file.pdf')
         self.assertIsNone(results['aaaa'])
+
+    def test_query_mass_for_samples(self):
+        parameters = {'delivery_date__gte': '2017-01-01', 'file_size__lte': 1000}
+
+        @urlmatch(netloc='localhost')
+        def mass_server_mock(url, request):
+            self.assertEqual('2017-01-01', request.original.params['delivery_date__gte'])
+            self.assertEqual(1000, request.original.params['file_size__lte'])
+            return json.dumps(self.sample_list_json).encode('utf-8')
+
+        with HTTMock(mass_server_mock):
+            results = query_mass_for_samples(parameters)
+
+        for sample in self.sample_list_json['results']:
+            self.assertEqual(sample, results[sample['id']]._to_json())
 
     def test_generate_file_structure(self):
         reports = {
