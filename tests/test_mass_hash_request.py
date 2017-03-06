@@ -84,9 +84,15 @@ class MassHashRequestTestCase(unittest.TestCase):
                           'hashes': ['md5', 'sha1', 'sha256', 'sha512'], 'directory': 'mhr_result'}
 
         with tempfile.TemporaryDirectory() as conf_dir:
-            config = load_configuration(conf_dir + '/config.json')
+            conf_path = conf_dir + '/config.json'
+            created_config = load_configuration(conf_path)
 
-        self.assertEqual(default_config, config)
+            # Check if config is returned after creation
+            self.assertEqual(default_config, created_config)
+
+            # Load the config again to make sure it's also stored
+            loaded_config = load_configuration(conf_path)
+            self.assertEqual(default_config, loaded_config)
 
     def test_load_config(self):
         default_config = {"api_key": "12345abcd", "base_url": "http://localhost:5000/", "directory": "mhr_result",
