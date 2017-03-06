@@ -180,7 +180,7 @@ def query_mass_for_samples(query_parameters):
             continue
 
     print('Incompatible choice of parameters')
-    sys.exit()
+    sys.exit(1)
 
 
 def touch_path(path):

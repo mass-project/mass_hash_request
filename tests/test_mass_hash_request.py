@@ -64,6 +64,14 @@ class MassHashRequestTestCase(unittest.TestCase):
         for sample in self.sample_list_json['results']:
             self.assertEqual(sample, results[sample['id']]._to_json())
 
+    def test_incompatible_query_parameters(self):
+        parameters = {'delivery_date__gte': '2017-01-01', 'file_size__lte': 1000, 'uri__startswith': 'http://'}
+
+        with self.assertRaises(SystemExit) as cm:
+            query_mass_for_samples(parameters)
+
+        self.assertEqual(cm.exception.code, 1)
+
     def test_generate_file_structure(self):
         reports = {
             'results': [
