@@ -2,6 +2,7 @@ import unittest
 from httmock import urlmatch, HTTMock
 from mass_hash_request import query_mass_for_hashes
 from mass_hash_request import generate_file_structure
+from mass_hash_request import load_configuration
 from mass_api_client.resources import FileSample, Report
 from mass_api_client import ConnectionManager
 import json
@@ -77,3 +78,19 @@ class MassHashRequestTestCase(unittest.TestCase):
             self.assertTrue(os.path.exists(base_dir + '/ffff/Sample/file.pdf'))
             self.assertTrue(os.path.exists(base_dir + '/ffff/Reports/some_system/some_report.json'))
             self.assertTrue(os.path.exists(base_dir + '/aaaa/SampleNotFound'))
+
+    def test_create_config(self):
+        default_config = {'base_url': 'http://localhost:5000/api/', 'api_key': '', 'hash': 'md5',
+                          'hashes': ['md5', 'sha1', 'sha256', 'sha512'], 'directory': 'mhr_result'}
+
+        with tempfile.TemporaryDirectory() as conf_dir:
+            config = load_configuration(conf_dir + '/config.json')
+
+        self.assertEqual(default_config, config)
+
+    def test_load_config(self):
+        default_config = {"api_key": "12345abcd", "base_url": "http://localhost:5000/", "directory": "mhr_result",
+                          "hash": "md5", "hashes": ["md5", "sha1", "sha256", "sha512"]}
+
+        config = load_configuration('tests/data/config.json')
+        self.assertEqual(default_config, config)
