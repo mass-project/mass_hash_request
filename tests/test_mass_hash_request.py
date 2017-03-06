@@ -124,5 +124,5 @@ class MassHashRequestTestCase(unittest.TestCase):
         default_config = {"api_key": "12345abcd", "base_url": "http://localhost:5000/", "directory": "mhr_result",
                           "hash": "md5", "hashes": ["md5", "sha1", "sha256", "sha512"]}
 
-        config = load_configuration('tests/data/config.json')
+        config = load_configuration('tests/data/test_config.json')
         self.assertEqual(default_config, config)
