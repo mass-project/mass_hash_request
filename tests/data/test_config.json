@@ -1,0 +1,12 @@
+{
+    "api_key": "12345abcd",
+    "base_url": "http://localhost:5000/",
+    "directory": "mhr_result",
+    "hash": "md5",
+    "hashes": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+    ]
+}

@@ -1,7 +1,8 @@
 import unittest
 from httmock import urlmatch, HTTMock
-from mass_hash_request import query_mass_for_hashes
+from mass_hash_request import query_mass_for_hashes, query_mass_for_samples
 from mass_hash_request import generate_file_structure
+from mass_hash_request import load_configuration
 from mass_api_client.resources import FileSample, Report
 from mass_api_client import ConnectionManager
 import json
@@ -15,6 +16,9 @@ class MassHashRequestTestCase(unittest.TestCase):
 
     def setUp(self):
         ConnectionManager().register_connection('default', '', 'http://localhost/api/')
+
+        with open('tests/data/file_sample_list.json') as fp:
+            self.sample_list_json = json.load(fp)
 
         with open('tests/data/file_sample.json') as fp:
             data = FileSample._deserialize(json.load(fp))
@@ -44,6 +48,29 @@ class MassHashRequestTestCase(unittest.TestCase):
 
         self.assertEqual(results['ffff'].file_names[0], 'file.pdf')
         self.assertIsNone(results['aaaa'])
+
+    def test_query_mass_for_samples(self):
+        parameters = {'delivery_date__gte': '2017-01-01', 'file_size__lte': 1000}
+
+        @urlmatch(netloc='localhost')
+        def mass_server_mock(url, request):
+            self.assertEqual('2017-01-01', request.original.params['delivery_date__gte'])
+            self.assertEqual(1000, request.original.params['file_size__lte'])
+            return json.dumps(self.sample_list_json).encode('utf-8')
+
+        with HTTMock(mass_server_mock):
+            results = query_mass_for_samples(parameters)
+
+        for sample in self.sample_list_json['results']:
+            self.assertEqual(sample, results[sample['id']]._to_json())
+
+    def test_incompatible_query_parameters(self):
+        parameters = {'delivery_date__gte': '2017-01-01', 'file_size__lte': 1000, 'uri__startswith': 'http://'}
+
+        with self.assertRaises(SystemExit) as cm:
+            query_mass_for_samples(parameters)
+
+        self.assertEqual(cm.exception.code, 1)
 
     def test_generate_file_structure(self):
         reports = {
@@ -77,3 +104,25 @@ class MassHashRequestTestCase(unittest.TestCase):
             self.assertTrue(os.path.exists(base_dir + '/ffff/Sample/file.pdf'))
             self.assertTrue(os.path.exists(base_dir + '/ffff/Reports/some_system/some_report.json'))
             self.assertTrue(os.path.exists(base_dir + '/aaaa/SampleNotFound'))
+
+    def test_create_config(self):
+        default_config = {'base_url': 'http://localhost:5000/api/', 'api_key': '', 'hash': 'md5',
+                          'hashes': ['md5', 'sha1', 'sha256', 'sha512'], 'directory': 'mhr_result'}
+
+        with tempfile.TemporaryDirectory() as conf_dir:
+            conf_path = conf_dir + '/config.json'
+            created_config = load_configuration(conf_path)
+
+            # Check if config is returned after creation
+            self.assertEqual(default_config, created_config)
+
+            # Load the config again to make sure it's also stored
+            loaded_config = load_configuration(conf_path)
+            self.assertEqual(default_config, loaded_config)
+
+    def test_load_config(self):
+        default_config = {"api_key": "12345abcd", "base_url": "http://localhost:5000/", "directory": "mhr_result",
+                          "hash": "md5", "hashes": ["md5", "sha1", "sha256", "sha512"]}
+
+        config = load_configuration('tests/data/test_config.json')
+        self.assertEqual(default_config, config)
