@@ -160,7 +160,7 @@ def query_mass_for_hashes(hash_type, hashes, query_parameters=None):
 
     for h in hashes:
         query_parameters[hash_type + 'sum'] = h
-        returned_samples = FileSample.query(**query_parameters)
+        returned_samples = list(FileSample.query(**query_parameters))
 
         if len(returned_samples) == 1:
             s = returned_samples[0]
